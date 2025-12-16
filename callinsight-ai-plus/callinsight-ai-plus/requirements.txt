@@ -1,0 +1,29 @@
+# Основной фреймворк
+flask>=2.3.0
+
+# AI и ML библиотеки
+transformers>=4.30.0
+torch>=2.0.0
+sentencepiece>=0.1.99
+scikit-learn>=1.3.0
+numpy>=1.24.0
+
+# Обработка аудио
+SpeechRecognition>=3.10.0
+pydub>=0.25.1
+librosa>=0.10.0
+
+# Работа с русским языком
+pymorphy2>=0.9.1
+pymorphy2-dicts-ru>=2.4.0
+yake>=0.4.8
+
+# Визуализация и дашборд
+plotly>=5.14.0
+matplotlib>=3.7.0
+wordcloud>=1.9.2
+pandas>=2.0.0
+
+# Дополнительные (опциональные)
+# spacy>=3.6.0
+# vosk>=0.3.45

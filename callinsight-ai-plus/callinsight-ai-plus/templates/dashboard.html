@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CallInsight AI+ - Дашборд анализа звонка</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    
+    <style>
+        .dashboard-container {
+            padding: 20px;
+            background-color: #f8f9fa;
+            min-height: 100vh;
+        }
+        
+        .dashboard-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            height: 100%;
+        }
+        
+        .dashboard-card h5 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .wordcloud-img {
+            width: 100%;
+            height: auto;
+            border-radius: 5px;
+        }
+        
+        .metrics-table {
+            margin-top: 10px;
+        }
+        
+        .recommendations-list {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        
+        .recommendations-list li {
+            padding: 10px;
+            margin-bottom: 8px;
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            border-radius: 4px;
+        }
+        
+        .header-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .emotion-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            margin: 5px;
+        }
+        
+        .back-button {
+            margin-bottom: 20px;
+        }
+        
+        .plotly-graph-div {
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .emotion-indicator {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+        
+        .emotion-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        
+        .metric-card {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            margin: 10px 0;
+        }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .metric-label {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+        }
+        
+        .keyword-cloud .badge {
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+        
+        .keyword-cloud .badge:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        /* CSS классы для разных эмоций */
+        .emotion-anger { background-color: #e74c3c; }
+        .emotion-joy { background-color: #2ecc71; }
+        .emotion-sadness { background-color: #3498db; }
+        .emotion-fear { background-color: #9b59b6; }
+        .emotion-surprise { background-color: #e67e22; }
+        .emotion-neutral { background-color: #95a5a6; }
+    </style>
+</head>
+<body>
+    <!-- Hidden div для передачи данных в JavaScript -->
+    <div id="callData" 
+         data-call='{{ call_data|tojson|safe }}'
+         style="display: none;">
+    </div>
+    
+    <div class="dashboard-container">
+        <div class="back-button">
+            <a href="/" class="btn btn-outline-primary">
+                ← Назад к списку звонков
+            </a>
+        </div>
+        
+        <!-- Шапка с информацией о звонке -->
+        <div class="header-info">
+            <div class="row">
+                <div class="col-md-6">
+                    <h3>📞 Анализ звонка #{{ call_data.call_id }}</h3>
+                    <p class="mb-1"><strong>Дата:</strong> {{ call_data.date }}</p>
+                    <p class="mb-1"><strong>Длительность:</strong> {{ call_data.duration }}</p>
+                    <p class="mb-0">
+                        <strong>Доминирующая эмоция:</strong>
+                        <span class="emotion-badge emotion-{{ call_data.dominant_emotion_class }}">
+                            {{ call_data.dominant_emotion|upper }}
+                        </span>
+                    </p>
+                </div>
+                <div class="col-md-6 text-end">
+                    {% if call_data.total_profanity_count > 3 %}
+                    <div class="alert alert-danger">
+                    {% elif call_data.total_profanity_count > 0 %}
+                    <div class="alert alert-warning">
+                    {% else %}
+                    <div class="alert alert-success">
+                    {% endif %}
+                        <h5>🚫 Нецензурная лексика</h5>
+                        <p class="mb-0">Обнаружено: {{ call_data.total_profanity_count }} случаев</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Дашборд -->
+        {{ dashboard_html|safe }}
+        
+        <!-- Блок с деталями транскрипта -->
+        <div class="dashboard-card">
+            <h5>📝 Детализированный анализ</h5>
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Ключевые слова (Топ-10):</h6>
+                    <div class="keyword-cloud">
+                        {% for keyword in call_data.keywords %}
+                        <span class="badge bg-info text-dark m-1 p-2">{{ keyword }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6>Извлеченные сущности:</h6>
+                    <ul>
+                        <li><strong>Даты:</strong> 2024-03-15</li>
+                        <li><strong>Суммы:</strong> 5000 руб</li>
+                        <li><strong>Номера заказов:</strong> A-12345</li>
+                        <li><strong>Контакты:</strong> +7 (XXX) XXX-XX-XX</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Экспорт и действия -->
+        <div class="dashboard-card">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>📤 Экспорт результатов</h6>
+                    <button class="btn btn-outline-primary me-2" onclick="exportPDF()">
+                        📄 Экспорт в PDF
+                    </button>
+                    <button class="btn btn-outline-success me-2" onclick="exportJSON()">
+                        📊 Экспорт в JSON
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="exportCSV()">
+                        📈 Экспорт в CSV
+                    </button>
+                </div>
+                <div class="col-md-6 text-end">
+                    <h6>⚡ Быстрые действия</h6>
+                    <button class="btn btn-danger me-2" onclick="escalateIncident()">
+                        🚨 Эскалировать инцидент
+                    </button>
+                    <button class="btn btn-warning me-2" onclick="scheduleCallback()">
+                        📞 Обратный звонок
+                    </button>
+                    <button class="btn btn-info" onclick="addToTraining()">
+                        👨‍🏫 Добавить в обучение
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // ✅ ПРАВИЛЬНЫЙ СПОСОБ: Читаем данные из data-атрибута
+        const callDataElement = document.getElementById('callData');
+        const callData = JSON.parse(callDataElement.getAttribute('data-call'));
+        
+        // Для отладки - выводим в консоль
+        console.log('Данные звонка:', callData);
+        
+        function exportPDF() {
+            alert('Экспорт в PDF будет реализован позже');
+            // Здесь будет логика экспорта в PDF
+        }
+        
+        function exportJSON() {
+            try {
+                const dataStr = JSON.stringify(callData, null, 2);
+                const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+                const exportFileDefaultName = 'call_analysis_' + callData.call_id + '.json';
+                
+                const linkElement = document.createElement('a');
+                linkElement.setAttribute('href', dataUri);
+                linkElement.setAttribute('download', exportFileDefaultName);
+                linkElement.click();
+                
+                console.log('Файл экспортирован:', exportFileDefaultName);
+            } catch (error) {
+                alert('Ошибка при экспорте JSON: ' + error.message);
+                console.error('Ошибка экспорта:', error);
+            }
+        }
+        
+        function exportCSV() {
+            alert('Экспорт в CSV будет реализован позже');
+            // Здесь будет логика экспорта в CSV
+        }
+        
+        function escalateIncident() {
+            if (confirm('Вы уверены, что хотите эскалировать этот инцидент? Письмо будет отправлено менеджеру.')) {
+                alert('Инцидент эскалирован. Менеджер будет уведомлен.');
+                console.log('Инцидент эскалирован для звонка:', callData.call_id);
+            }
+        }
+        
+        function scheduleCallback() {
+            const time = prompt('Введите удобное время для обратного звонка (например: "завтра в 14:00"):');
+            if (time) {
+                alert(`Обратный звонок запланирован на: ${time}`);
+                console.log('Обратный звонок запланирован на:', time);
+            }
+        }
+        
+        function addToTraining() {
+            if (confirm('Добавить этот звонок в базу для обучения операторов?')) {
+                alert('Звонок добавлен в учебные материалы.');
+                console.log('Звонок добавлен в обучение:', callData.call_id);
+            }
+        }
+        
+        // Функция для применения CSS классов на основе данных
+        function applyDynamicStyles() {
+            // Находим бейдж эмоции и добавляем правильный класс
+            const emotionBadge = document.querySelector('.emotion-badge');
+            if (emotionBadge) {
+                // Удаляем все классы эмоций
+                emotionBadge.classList.remove('emotion-anger', 'emotion-joy', 'emotion-sadness', 
+                                             'emotion-fear', 'emotion-surprise', 'emotion-neutral');
+                
+                // Используем класс из callData
+                const emotionClass = callData.dominant_emotion_class || 'neutral';
+                emotionBadge.classList.add('emotion-' + emotionClass);
+            }
+            
+            // Добавляем интерактивности к ключевым словам
+            const keywordBadges = document.querySelectorAll('.keyword-cloud .badge');
+            keywordBadges.forEach(badge => {
+                badge.addEventListener('click', function() {
+                    const keyword = this.textContent;
+                    alert(`Ключевое слово: "${keyword}"\n\nЭто слово встречалось в контексте жалобы клиента.`);
+                });
+            });
+        }
+        
+        // Вызываем при загрузке страницы
+        document.addEventListener('DOMContentLoaded', applyDynamicStyles);
+        
+        // Пример использования данных для создания графика
+        function createSimpleChart() {
+            if (!callData.emotion_stats) return;
+            
+            const emotions = Object.keys(callData.emotion_stats);
+            const values = Object.values(callData.emotion_stats);
+            
+            const colors = {
+                'радость': '#2ecc71',
+                'гнев': '#e74c3c',
+                'грусть': '#3498db',
+                'страх': '#9b59b6',
+                'удивление': '#e67e22',
+                'нейтрально': '#95a5a6'
+            };
+            
+            const chartColors = emotions.map(emotion => colors[emotion] || '#95a5a6');
+            
+            // Создаем простой текст для отображения
+            const chartHtml = `
+            <div class="dashboard-card">
+                <h5>📊 График эмоций (демо)</h5>
+                <div style="padding: 20px;">
+                    ${emotions.map((emotion, i) => `
+                        <div class="mb-2">
+                            <strong>${emotion}:</strong> ${values[i]}%
+                            <div class="progress">
+                                <div class="progress-bar" 
+                                     style="width: ${values[i]}%; background-color: ${chartColors[i]};">
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            `;
+            
+            // Вставляем график в дашборд
+            const dashboardContainer = document.querySelector('.dashboard-container');
+            if (dashboardContainer) {
+                dashboardContainer.insertAdjacentHTML('afterbegin', chartHtml);
+            }
+        }
+        
+        // Автоматически создаем график при загрузке
+        document.addEventListener('DOMContentLoaded', createSimpleChart);
+    </script>
+</body>
+</html>

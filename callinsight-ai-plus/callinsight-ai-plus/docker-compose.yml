@@ -1,0 +1,14 @@
+# docker-compose.yml
+version: '3.8'
+services:
+  callinsight:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./uploads:/app/uploads  # Сохраняет загруженные файлы
+      - ./templates:/app/templates
+    environment:
+      - FLASK_ENV=development
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped

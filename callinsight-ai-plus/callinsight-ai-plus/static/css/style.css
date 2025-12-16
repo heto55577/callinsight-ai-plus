@@ -1,0 +1,51 @@
+/* Дополнительные стили для дашборда */
+.dashboard-container {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.plotly-graph-div {
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.emotion-indicator {
+    display: flex;
+    align-items: center;
+    margin: 10px 0;
+}
+
+.emotion-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+.metric-card {
+    text-align: center;
+    padding: 15px;
+    border-radius: 8px;
+    background: #f8f9fa;
+    margin: 10px 0;
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.metric-label {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+}
+
+.keyword-cloud .badge {
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.keyword-cloud .badge:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
